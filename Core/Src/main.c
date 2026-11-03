@@ -26,6 +26,7 @@
 #include "dodo_BMI270.h" //陀螺仪驱动
 #include "multiplexer.h" //多路复用器驱动，用于读取光电管读数
 #include "stdio.h"
+#include "motor.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +58,9 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 UART_HandleTypeDef huart3;
+
+int16_t now_measureVal_L=0,last_measureVal_L=0,now_measureVal_R=0,last_measureVal_R=0;
+int16_t delta_encoder_L=0,delta_encoder_R=0;
 
 /* USER CODE BEGIN PV */
 //负压启动相关宏
@@ -149,6 +153,7 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_TIM4_Init(void);
+
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -160,6 +165,28 @@ int fputc(int ch, FILE *f)
   return ch;
 }
 float gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z; // 陀螺仪数据
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if(htim==&htim2){
+		
+		Track();
+		
+		now_measureVal_L=(int16_t)__HAL_TIM_GET_COUNTER(&htim3);
+		delta_encoder_L=now_measureVal_L-last_measureVal_L;
+		last_measureVal_L=now_measureVal_L;
+		
+		now_measureVal_R=(int16_t)__HAL_TIM_GET_COUNTER(&htim4);
+		delta_encoder_R=now_measureVal_R-last_measureVal_R;
+		last_measureVal_R=now_measureVal_R;
+		
+	
+	ComputePID(&LeftPID,delta_encoder_L);
+	ComputePID(&RightPID,delta_encoder_R);
+	
+	MotorControl(&LeftPID,&RightPID);
+
+	}
+}
 /* USER CODE END 0 */
 void Init_brushless_motor(void)
 {
@@ -218,8 +245,12 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
   Init_brushless_motor(); //等待无刷电调负压启动完成
+	MotorInit();
+	
   /* USER CODE BEGIN 2 */
   dodo_BMI270_init(); // 初始化陀螺仪
+	HAL_TIM_Base_Start_IT(&htim2); 
+	 __HAL_TIM_SET_AUTORELOAD(&htim2, 9999);
   //pwm示例
   //TIM1->CCR1 = 2000;
   //TIM1->CCR2 = 2000;
