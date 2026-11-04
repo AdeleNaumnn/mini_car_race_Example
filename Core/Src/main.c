@@ -39,8 +39,8 @@
 /* 陀螺仪调试打印开关。置 1 会引入约 5.4 kB 的浮点 printf 代码，
    MDK-Lite 的 32 kB 链接上限会因此报 L6047U 而链接失败。
    平时保持 0；要串口看数据时改成 1（并注意镜像大小）。 */
-#define GYRO_DEBUG 1
-#define IF_start_Brushless_motor 1 //是否启动无刷电机，1为启动，0为不启动
+#define GYRO_DEBUG 0
+#define IF_start_Brushless_motor 0 //是否启动无刷电机，1为启动，0为不启动
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -166,6 +166,24 @@ int fputc(int ch, FILE *f)
 }
 float gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z; // 陀螺仪数据
 
+/* ============ 串口打印速度曲线（调完把 DBG_PLOT 改成 0） ============ */
+#define DBG_PLOT  1
+#if DBG_PLOT
+static char *u2s(char *p, int16_t v)
+{
+    char tmp[6];
+    uint8_t n = 0;
+    uint16_t u;
+
+    if (v < 0) { *p++ = '-'; u = (uint16_t)(-v); }
+    else       { u = (uint16_t)v; }
+
+    do { tmp[n++] = (char)('0' + u % 10); u /= 10; } while (u);
+    while (n) *p++ = tmp[--n];
+    return p;
+}
+#endif
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim==&htim2){
 		
@@ -248,7 +266,7 @@ int main(void)
 	MotorInit();
 	
   /* USER CODE BEGIN 2 */
-  dodo_BMI270_init(); // 初始化陀螺仪
+  /* dodo_BMI270_init(); */   /* 陀螺仪暂时关掉：省 6 KB flash */ // 初始化陀螺仪
 	HAL_TIM_Base_Start_IT(&htim2); 
 	 __HAL_TIM_SET_AUTORELOAD(&htim2, 9999);
   //pwm示例

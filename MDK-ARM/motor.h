@@ -9,6 +9,7 @@
 #define integralLimit 20000
 #define pwmMax 3600
 #define Base_Speed 30
+#define LOST_STOP_CNT 200
 
 struct PID_Controller{
 	int16_t  targetVal;
